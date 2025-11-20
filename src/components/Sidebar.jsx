@@ -68,7 +68,6 @@ const NAV_STRUCTURE = [
     items: [
       { id: "reports", label: "Reports", icon: <FiTrendingUp />, href: "/reports" },
       { id: "settings", label: "Settings", icon: <FiSettings />, href: "/settings" },
-      // logout will be handled specially below
       { id: "logout", label: "Logout", icon: <FiLogOut />, href: "/auth/logout" },
     ],
   },
@@ -82,31 +81,25 @@ export default function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobile
     expenses: false,
   });
 
-  const toggleGroup = (id) => setOpenGroups((p) => ({ ...p, [id]: !p[id] }));
+  const toggleGroup = (id) =>
+    setOpenGroups((p) => ({ ...p, [id]: !p[id] }));
 
-  const ROW_HEIGHT = 44; // px per sub-item (for animation)
+  const ROW_HEIGHT = 44;
 
   const activeForItem = (item) => {
-    if (!pathname) return false;
     if (item.href && (pathname === item.href || pathname.startsWith(item.href + "/"))) return true;
-    if (currentRouteId && currentRouteId === item.id) return true;
+    if (currentRouteId === item.id) return true;
     if (item.children) {
-      if (item.children.some((c) => pathname === c.href || pathname.startsWith(c.href + "/") || currentRouteId === c.id)) return true;
+      return item.children.some(
+        (c) => pathname.startsWith(c.href) || currentRouteId === c.id
+      );
     }
     return false;
   };
 
-  // helper to request logout modal from Navbar
   function requestLogoutModal() {
-    // prefer dispatching a custom DOM event so Navbar (same page) can open its modal
-    if (typeof window !== "undefined" && window.dispatchEvent) {
-      const ev = new Event("open-logout-modal");
-      window.dispatchEvent(ev);
-      return;
-    }
-    // fallback: direct navigation (server side / odd cases)
     if (typeof window !== "undefined") {
-      window.location.href = "/auth/logout";
+      window.dispatchEvent(new Event("open-logout-modal"));
     }
   }
 
@@ -126,6 +119,7 @@ export default function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobile
             >
               TS
             </div>
+
             {!collapsed && (
               <div>
                 <div className="font-semibold">Trucking Solution</div>
@@ -135,9 +129,8 @@ export default function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobile
           </div>
 
           <button
-            className="p-2 rounded-md hover:bg-white/5 md:block hidden cursor-pointer"
+            className="p-2 rounded-md hover:bg-white/5 cursor-pointer hidden md:block"
             onClick={() => setCollapsed((s) => !s)}
-            aria-label="Toggle sidebar"
           >
             {collapsed ? <FiChevronRight /> : <FiChevronLeft />}
           </button>
@@ -145,9 +138,11 @@ export default function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobile
 
         <nav className="mt-2 flex-1 overflow-y-auto px-2 pb-6">
           {NAV_STRUCTURE.map((group) => (
-            <div key={group.heading} className="mb-4 mt-">
+            <div key={group.heading} className="mb-4 mt-2">
               {!collapsed && group.heading && (
-                <div className="px-3 text-xs text-slate-400 uppercase font-semibold mb-2">{group.heading}</div>
+                <div className="px-3 text-xs text-slate-400 uppercase font-semibold mb-2">
+                  {group.heading}
+                </div>
               )}
 
               <div className="flex flex-col gap-1">
@@ -156,82 +151,83 @@ export default function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobile
                   const hasChildren = !!item.children?.length;
                   const childrenCount = item.children?.length || 0;
                   const maxHeight = openGroups[item.id] ? `${childrenCount * ROW_HEIGHT}px` : "0px";
-
-                  // special-case logout rendering to use the modal event
                   const isLogout = item.id === "logout";
 
                   return (
                     <div key={item.id} className="w-full">
                       <div
                         className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors cursor-pointer w-full
-                          ${active ? "bg-orange-600/20 text-orange-300 border-l-4 border-orange-500" : "text-slate-200"}
+                          ${
+                            active
+                              ? "bg-orange-600/20 text-orange-300 border-l-4 border-orange-500"
+                              : "text-slate-200"
+                          }
                           hover:bg-white/6 hover:text-white`}
-                        onClick={() => {
-                          if (hasChildren) toggleGroup(item.id);
-                        }}
+                        onClick={() => hasChildren && toggleGroup(item.id)}
                       >
-                        <div className="w-8 flex items-center justify-center text-lg">{item.icon}</div>
+                        <div className="w-8 flex items-center justify-center text-lg">
+                          {item.icon}
+                        </div>
 
                         {!collapsed ? (
                           <>
                             <div className="flex-1 text-sm font-medium">
                               {isLogout ? (
-                                // render button that triggers logout modal
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     requestLogoutModal();
                                   }}
-                                  className="block w-full text-left cursor-pointer"
+                                  className="block w-full text-left"
                                 >
-                                  <span className="block">{item.label}</span>
+                                  {item.label}
                                 </button>
                               ) : item.href && !hasChildren ? (
                                 <Link href={item.href} className="block w-full">
-                                  <span className="block">{item.label}</span>
+                                  {item.label}
                                 </Link>
                               ) : (
                                 <span>{item.label}</span>
                               )}
                             </div>
 
-                            {hasChildren ? (
+                            {hasChildren && (
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   toggleGroup(item.id);
                                 }}
-                                className="flex items-center gap-2 text-xs text-slate-300 hover:text-white cursor-pointer"
-                                aria-expanded={!!openGroups[item.id]}
+                                className="flex items-center gap-2 text-xs text-slate-300 hover:text-white"
                               >
-                                <span className="text-xs bg-white/6 px-2 py-0.5 rounded">+{childrenCount}</span>
-                                <span>{openGroups[item.id] ? <FiChevronDown /> : <FiChevronRight />}</span>
+                                <span className="text-xs bg-white/6 px-2 py-0.5 rounded">
+                                  +{childrenCount}
+                                </span>
+                                {openGroups[item.id] ? <FiChevronDown /> : <FiChevronRight />}
                               </button>
-                            ) : null}
+                            )}
                           </>
-                        ) : (
-                          <div className="sr-only">{item.label}</div>
-                        )}
+                        ) : null}
                       </div>
 
                       {hasChildren && (
                         <div
                           className="ml-11 mt-1 overflow-hidden transition-[max-height] duration-300 ease-in-out"
-                          style={{ maxHeight: collapsed ? "0px" : maxHeight }}
+                          style={{ maxHeight }}
                         >
                           <div className="flex flex-col gap-1 py-1">
                             {item.children.map((sub) => {
-                              const subActive =
-                                pathname === sub.href ||
-                                pathname?.startsWith(sub.href + "/") ||
-                                currentRouteId === sub.id;
+                              const subActive = pathname.startsWith(sub.href);
                               return (
                                 <Link
                                   key={sub.id}
                                   href={sub.href}
                                   className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors w-full
-                                    ${subActive ? "bg-orange-600/20 text-orange-300 border-l-4 border-orange-500 pl-2" : "text-slate-300 pl-2"}
-                                    hover:bg-white/6 hover:text-white cursor-pointer`}
+                                    ${
+                                      subActive
+                                        ? "bg-orange-600/20 text-orange-300 border-l-4 border-orange-500 pl-2"
+                                        : "text-slate-300 pl-2"
+                                    }
+                                    hover:bg-white/6 hover:text-white`}
                                 >
                                   <span className="w-2 h-2 rounded-full bg-slate-400 inline-block" />
                                   <span className="truncate">{sub.label}</span>
@@ -255,12 +251,14 @@ export default function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobile
         </div>
       </aside>
 
-      {/* Mobile drawer */}
+      {/* MOBILE SIDEBAR */}
       <div
-        className={`md:hidden fixed inset-0 z-50 transform transition duration-300 ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}
-        aria-hidden={!mobileOpen}
+        className={`md:hidden fixed inset-0 z-50 transform transition duration-300 ${
+          mobileOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
       >
         <div className="absolute inset-0 bg-black/40" onClick={() => setMobileOpen(false)} />
+
         <div className="relative w-72 h-screen bg-[#071228] p-4 text-slate-200 overflow-auto">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
@@ -275,6 +273,7 @@ export default function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobile
                 <div className="text-xs text-slate-400">Tenant Admin</div>
               </div>
             </div>
+
             <button onClick={() => setMobileOpen(false)} className="p-2 cursor-pointer">
               <FiX />
             </button>
@@ -288,25 +287,27 @@ export default function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobile
                 {group.items.map((item) => {
                   const hasChildren = !!item.children?.length;
                   const mobileActive =
-                    (item.href && (pathname === item.href || pathname?.startsWith(item.href + "/"))) ||
-                    (item.children && item.children.some((c) => pathname === c.href || pathname?.startsWith(c.href + "/")));
+                    pathname.startsWith(item.href) ||
+                    item.children?.some((c) => pathname.startsWith(c.href));
 
-                  // special-case logout button
                   const isLogout = item.id === "logout";
 
                   return (
-                    <div key={item.id} className="mb-1">
+                    <div key={item.id}>
                       <div className="flex items-center justify-between">
                         {isLogout ? (
                           <button
                             onClick={() => {
-                              // close mobile drawer then request modal
                               setMobileOpen(false);
                               requestLogoutModal();
                             }}
                             className={`flex items-center gap-3 px-3 py-2 rounded w-full transition-colors
-                              ${mobileActive ? "bg-orange-600/20 text-orange-300 border-l-4 border-orange-500 pl-2" : "text-slate-200"}
-                              hover:bg-white/6 hover:text-white cursor-pointer text-left`}
+                              ${
+                                mobileActive
+                                  ? "bg-orange-600/20 text-orange-300 border-l-4 border-orange-500 pl-2"
+                                  : "text-slate-200"
+                              }
+                              hover:bg-white/6 hover:text-white text-left`}
                           >
                             <div className="w-6">{item.icon}</div>
                             <div className="text-sm font-medium">{item.label}</div>
@@ -314,9 +315,14 @@ export default function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobile
                         ) : (
                           <Link
                             href={item.href}
+                            onClick={() => setMobileOpen(false)}
                             className={`flex items-center gap-3 px-3 py-2 rounded w-full transition-colors
-                              ${mobileActive ? "bg-orange-600/20 text-orange-300 border-l-4 border-orange-500 pl-2" : "text-slate-200"}
-                              hover:bg-white/6 hover:text-white cursor-pointer`}
+                              ${
+                                mobileActive
+                                  ? "bg-orange-600/20 text-orange-300 border-l-4 border-orange-500 pl-2"
+                                  : "text-slate-200"
+                              }
+                              hover:bg-white/6 hover:text-white`}
                           >
                             <div className="w-6">{item.icon}</div>
                             <div className="text-sm font-medium">{item.label}</div>
@@ -325,8 +331,10 @@ export default function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobile
 
                         {hasChildren && (
                           <button
-                            onClick={() => setOpenGroups((p) => ({ ...p, [item.id]: !p[item.id] }))}
-                            className="p-2 text-slate-300 cursor-pointer"
+                            onClick={() =>
+                              setOpenGroups((p) => ({ ...p, [item.id]: !p[item.id] }))
+                            }
+                            className="p-2 text-slate-300"
                           >
                             {openGroups[item.id] ? <FiChevronDown /> : <FiChevronRight />}
                           </button>
@@ -336,9 +344,16 @@ export default function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobile
                       {hasChildren && openGroups[item.id] && (
                         <div className="ml-8 mt-1 flex flex-col gap-1">
                           {item.children.map((sub) => {
-                            const subActive = pathname === sub.href || pathname?.startsWith(sub.href + "/");
+                            const subActive = pathname.startsWith(sub.href);
                             return (
-                              <Link key={sub.id} href={sub.href} className={`px-3 py-2 rounded hover:bg-white/5 text-sm ${subActive ? "text-orange-300 bg-orange-600/10" : "text-slate-300"} cursor-pointer`}>
+                              <Link
+                                key={sub.id}
+                                href={sub.href}
+                                onClick={() => setMobileOpen(false)}
+                                className={`px-3 py-2 rounded hover:bg-white/5 text-sm ${
+                                  subActive ? "text-orange-300 bg-orange-600/10" : "text-slate-300"
+                                }`}
+                              >
                                 {sub.label}
                               </Link>
                             );
